@@ -1,4 +1,3 @@
-
 import { program } from 'commander';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
@@ -76,14 +75,13 @@ async function getAuthToken(): Promise<string> {
 
 async function makeChatRequest(message: string): Promise<string> {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2023-05-15';
 
-  if (!endpoint || !deployment) {
-    throw new Error('Missing required environment variables: AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT');
+  if (!endpoint) {
+    throw new Error('Missing required environment variables: AZURE_OPENAI_ENDPOINT');
   }
 
-  const url = `https://${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+  const url = `https://${endpoint}/openai/chat/completions?api-version=${apiVersion}`;
   const token = await getAuthToken();
 
   const response = await fetch(url, {
@@ -126,4 +124,3 @@ program
   });
 
 program.parse(process.argv);
-      
