@@ -4,11 +4,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as https from 'https';
+import dotenv from 'dotenv';
 
 interface Config {
   token?: string;
   expirationTime?: number;
 }
+
+dotenv.config();
 
 const CONFIG_FILE = path.join(os.homedir(), '.azure-gpt-config.json');
 
@@ -30,7 +33,7 @@ function writeConfig(config: Config): void {
 }
 
 async function fetchNewToken(): Promise<string> {
-  const url = 'https://token.com/accessToken';
+  const url = 'https://token.com/accessToken'; // Replace with your actual token endpoint
   const username = process.env.USERNAME;
   const password = process.env.PASSWORD;
 
@@ -76,12 +79,13 @@ async function getAuthToken(): Promise<string> {
 async function makeChatRequest(message: string): Promise<string> {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2023-05-15';
+  const modelName = 'gpt-4'; // Adjust if your deployment name differs
 
   if (!endpoint) {
     throw new Error('Missing required environment variables: AZURE_OPENAI_ENDPOINT');
   }
 
-  const url = `https://${endpoint}/openai/chat/completions?api-version=${apiVersion}`;
+  const url = `https://${endpoint}/openai/deployments/${modelName}/chat/completions?api-version=${apiVersion}`;
   const token = await getAuthToken();
 
   const response = await fetch(url, {
@@ -106,18 +110,67 @@ async function makeChatRequest(message: string): Promise<string> {
   return data.choices[0].message.content;
 }
 
+async function makeSpeechRequest(text: string): Promise<void> {
+  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2023-05-15';
+  const deploymentName = 'tts'; // Adjust to your TTS deployment name
+  const outputFile = 'output.mp3';
+
+  if (!endpoint) {
+    throw new Error('Missing required environment variables: AZURE_OPENAI_ENDPOINT');
+  }
+
+  const url = `https://${endpoint}/openai/deployments/${deploymentName}/audio/speech?api-version=${apiVersion}`;
+  const token = await getAuthToken();
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'tts-1',
+      voice: 'onyx',
+      input: text,
+      response_format: 'mp3'
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`TTS API request failed with status ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  fs.writeFileSync(outputFile, Buffer.from(arrayBuffer));
+  console.log(`Audio saved to ${outputFile}`);
+}
+
 program
   .description('A command-line interface for interacting with Azure OpenAI')
   .version('1.0.0')
   .action(() => {
     program.outputHelp();
-  })
+  });
+
+program
   .command('chat <message>')
   .description('Chat with the Azure OpenAI bot')
   .action(async (message) => {
     try {
       const reply = await makeChatRequest(message);
       console.log(reply);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
+    }
+  });
+
+program
+  .command('speech <text>')
+  .description('Convert text to speech using Azure OpenAI TTS (onyx voice, tts-1 model, mp3 format)')
+  .action(async (text) => {
+    try {
+      await makeSpeechRequest(text);
     } catch (error: any) {
       console.error(`Error: ${error.message}`);
     }
