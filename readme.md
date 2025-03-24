@@ -45,7 +45,8 @@ Before using the chat feature, you need to set up environment variables for your
 
 ### Required Environment Variables
 - **AZURE_OPENAI_ENDPOINT**: The endpoint URL for your Azure OpenAI resource (e.g., myresource.openai.azure.com).
-- **AZURE_OPENAI_DEPLOYMENT**: The name of your deployed model (e.g., gpt-4o).
+- **USERNAME**: Username for token authentication.
+- **PASSWORD**: Password for token authentication.
 
 ### Optional Environment Variable
 - **AZURE_OPENAI_API_VERSION**: The API version to use (defaults to 2023-05-15 if not set).
@@ -55,14 +56,16 @@ Before using the chat feature, you need to set up environment variables for your
 **On Unix-based Systems (Linux/macOS)**
 ```bash
 export AZURE_OPENAI_ENDPOINT="your-endpoint"
-export AZURE_OPENAI_DEPLOYMENT="your-deployment"
+export USERNAME="your-username"
+export PASSWORD="your-password"
 export AZURE_OPENAI_API_VERSION="2023-05-15"  # Optional
 ```
 
 **On Windows (Command Prompt)**
 ```bash
 set AZURE_OPENAI_ENDPOINT=your-endpoint
-set AZURE_OPENAI_DEPLOYMENT=your-deployment
+set USERNAME=your-username
+set PASSWORD=your-password
 set AZURE_OPENAI_API_VERSION=2023-05-15  # Optional
 ```
 
@@ -103,16 +106,17 @@ azure-gpt --help
 
 ## Authentication
 
-The CLI currently uses a placeholder token mechanism:
-- Tokens are fetched from https://token.com/accessToken with a clientId=234 payload (a dummy endpoint for now).
+The CLI uses a token-based authentication mechanism:
+- Tokens are fetched from https://token.com/accessToken using your username and password credentials.
 - Tokens are cached in ~/.azure-gpt-config.json with a 55-minute TTL.
 
-In a real enterprise setup, replace the fetchNewToken function in src/index.ts with logic to authenticate via Microsoft Entra ID or your Azure credentials.
+In a real enterprise setup, replace the fetchNewToken function in src/index.ts with logic to authenticate via Microsoft Entra ID or your enterprise authentication system.
 
 ## Troubleshooting
 
-- **"Missing required environment variables"**: Ensure AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT are set.
-- **"API request failed"**: Check your endpoint, deployment name, and authentication setup. The current dummy token will fail with real Azure endpoints.
+- **"Missing required environment variables"**: Ensure AZURE_OPENAI_ENDPOINT, USERNAME, and PASSWORD are set.
+- **"Failed to fetch token"**: Check your username and password or network connectivity to the token endpoint.
+- **"API request failed"**: Check your Azure OpenAI endpoint and API version.
 - **Command not found**: Verify npm link succeeded and your PATH includes global npm binaries (npm config get prefix).
 
 ## Development
