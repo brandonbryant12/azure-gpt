@@ -32,7 +32,14 @@ function writeConfig(config: Config): void {
 
 async function fetchNewToken(): Promise<string> {
   const url = 'https://token.com/accessToken';
-  const payload = 'clientId=234';
+  const username = process.env.USERNAME;
+  const password = process.env.PASSWORD;
+
+  if (!username || !password) {
+    throw new Error('Missing required environment variables: USERNAME and PASSWORD');
+  }
+
+  const payload = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
 
   const agent = new https.Agent({ rejectUnauthorized: false }); // Ignore SSL certificate validation
 
