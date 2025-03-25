@@ -1,130 +1,106 @@
-# azure-gpt
+# Azure GPT CLI
 
-A command-line interface (CLI) for interacting with an Azure OpenAI deployment in an enterprise environment.
+A command-line interface for interacting with Azure OpenAI and Speech services in an enterprise environment with bearer token authentication.
 
-This tool allows you to chat with an Azure OpenAI bot from your terminal, leveraging a cached authentication token and configurable API settings.
+## Features
+
+- Chat with Azure OpenAI models
+- Text-to-speech synthesis using Microsoft Speech SDK
+- Audio playback capability
+- Enterprise-ready with custom authentication
 
 ## Installation
 
-Follow these steps to install `azure-gpt` and make it available globally on your system.
+```bash
+# Clone the repository
+git clone <repository-url>
+cd azure-gpt
 
-### Prerequisites
-- **Node.js**: Version 18.17.0 or higher (tested with v18.17.0).
-- **npm**: Comes with Node.js, used for package management.
-- **Git**: To clone the repository (optional if downloading manually).
+# Install dependencies
+npm install
 
-### Steps
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/brandonbryant12/azure-gpt.git
-   cd azure-gpt
-   ```
+# Build the project
+npm run build
 
-2. **Install Dependencies**
-   Run the following command in the project directory to install required packages:
-   ```bash
-   npm install
-   ```
-
-3. **Build the Project**
-   Compile the TypeScript code into JavaScript:
-   ```bash
-   npm run build
-   ```
-
-4. **Make it Globally Available**
-   Link the CLI to your system so you can run azure-gpt from anywhere:
-   ```bash
-   npm link
-   ```
-   This creates a symbolic link in your global node_modules directory, making azure-gpt a globally accessible command.
+# Create a symbolic link to use the CLI globally (optional)
+npm link
+```
 
 ## Configuration
 
-Before using the chat feature, you need to set up environment variables for your Azure OpenAI deployment.
+Create a `.env` file in the project root with the following variables:
 
-### Required Environment Variables
-- **AZURE_OPENAI_ENDPOINT**: The endpoint URL for your Azure OpenAI resource (e.g., myresource.openai.azure.com).
-- **USERNAME**: Username for token authentication.
-- **PASSWORD**: Password for token authentication.
-
-### Optional Environment Variable
-- **AZURE_OPENAI_API_VERSION**: The API version to use (defaults to 2023-05-15 if not set).
-
-### Setting Environment Variables
-
-**On Unix-based Systems (Linux/macOS)**
-```bash
-export AZURE_OPENAI_ENDPOINT="your-endpoint"
-export USERNAME="your-username"
-export PASSWORD="your-password"
-export AZURE_OPENAI_API_VERSION="2023-05-15"  # Optional
 ```
+# Authentication credentials
+USERNAME=your_username
+PASSWORD=your_password
+CLIENT_ID=your_client_id
+SCOPE=your_scope
 
-**On Windows (Command Prompt)**
-```bash
-set AZURE_OPENAI_ENDPOINT=your-endpoint
-set USERNAME=your-username
-set PASSWORD=your-password
-set AZURE_OPENAI_API_VERSION=2023-05-15  # Optional
+# Azure OpenAI settings
+AZURE_OPENAI_ENDPOINT=your-endpoint.openai.azure.com
+AZURE_OPENAI_API_VERSION=2023-05-15
+CHAT_MODEL=gpt-4o
+
+# Microsoft Speech Service settings
+AZURE_SPEECH_REGION=eastus
+AZURE_SPEECH_VOICE=en-US-JennyNeural
 ```
-
-**Persistent Configuration**
-To avoid setting these every session, add them to your shell profile (e.g., ~/.bashrc, ~/.zshrc, or equivalent).
 
 ## Usage
 
-Once installed globally and configured, you can use azure-gpt from any terminal.
+### Chat Command
 
-### Commands
+Interact with Azure OpenAI chat models:
 
-**Get Help**
 ```bash
-azure-gpt
-```
-Displays usage information and available commands.
-
-**Chat with the Bot**
-```bash
-azure-gpt chat "Your message here"
-```
-Sends a message to the Azure OpenAI bot and prints the response.
-
-### Examples
-
-Chat with the bot:
-```bash
-azure-gpt chat "How's the weather today?"
-```
-Expected output: The bot's response (assuming authentication works).
-
-View version and help:
-```bash
-azure-gpt --version
-azure-gpt --help
+azure-gpt chat "What is the capital of France?"
 ```
 
-## Authentication
+### Speech Command
 
-The CLI uses a token-based authentication mechanism:
-- Tokens are fetched from https://token.com/accessToken using your username and password credentials.
-- Tokens are cached in ~/.azure-gpt-config.json with a 55-minute TTL.
+Convert text to speech using Microsoft Speech SDK:
 
-In a real enterprise setup, replace the fetchNewToken function in src/index.ts with logic to authenticate via Microsoft Entra ID or your enterprise authentication system.
+```bash
+# Basic usage
+azure-gpt speech "Hello, this is a text to speech test."
 
-## Troubleshooting
+# Specify output file
+azure-gpt speech "Custom output file example." --output my_speech.wav
 
-- **"Missing required environment variables"**: Ensure AZURE_OPENAI_ENDPOINT, USERNAME, and PASSWORD are set.
-- **"Failed to fetch token"**: Check your username and password or network connectivity to the token endpoint.
-- **"API request failed"**: Check your Azure OpenAI endpoint and API version.
-- **Command not found**: Verify npm link succeeded and your PATH includes global npm binaries (npm config get prefix).
+# Specify a different voice
+azure-gpt speech "This is using a different voice." --voice en-US-GuyNeural
+
+# Generate and play the audio
+azure-gpt speech "This will be played immediately after generation." --play
+
+# Combine options
+azure-gpt speech "Using all options together." --output custom.wav --voice en-US-GuyNeural --play
+```
 
 ## Development
 
-To modify the code:
-1. Edit files in src/.
-2. Rebuild with npm run build.
-3. Test locally with npm run start or re-link globally with npm link.
+### Project Structure
+
+- `src/index.ts`: Main CLI entry point and command definitions
+- `src/env.ts`: Environment variable handling with Zod validation
+- `src/token.ts`: Authentication token management
+- `src/chat.ts`: Chat functionality with Azure OpenAI
+- `src/voice.ts`: Text-to-speech functionality with Microsoft Speech SDK
+
+### Adding New Commands
+
+To add new commands, modify the `src/index.ts` file following the Commander.js pattern:
+
+```typescript
+program
+  .command('new-command <required-arg>')
+  .description('Description of the new command')
+  .option('-o, --option <value>', 'Description of the option')
+  .action(async (requiredArg, options) => {
+    // Implementation
+  });
+```
 
 ## License
 
