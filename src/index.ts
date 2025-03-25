@@ -1,150 +1,6 @@
 import { program } from 'commander';
-import fetch from 'node-fetch';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as https from 'https';
-import dotenv from 'dotenv';
-
-interface Config {
-  token?: string;
-  expirationTime?: number;
-}
-
-dotenv.config();
-
-const CONFIG_FILE = path.join(os.homedir(), '.azure-gpt-config.json');
-
-function readConfig(): Config {
-  try {
-    const data = fs.readFileSync(CONFIG_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    return {};
-  }
-}
-
-function writeConfig(config: Config): void {
-  try {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
-  } catch (error: any) {
-    console.error(`Failed to write config file: ${error.message}`);
-  }
-}
-
-async function fetchNewToken(): Promise<string> {
-  const url = 'https://token.com/accessToken'; // Replace with your actual token endpoint
-  const username = process.env.USERNAME;
-  const password = process.env.PASSWORD;
-
-  if (!username || !password) {
-    throw new Error('Missing required environment variables: USERNAME and PASSWORD');
-  }
-
-  const payload = `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-
-  const agent = new https.Agent({ rejectUnauthorized: false }); // Ignore SSL certificate validation
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: payload,
-    agent
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch token: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.access_token;
-}
-
-async function getAuthToken(): Promise<string> {
-  const config = readConfig();
-  const currentTime = Date.now();
-
-  if (config.token && config.expirationTime && config.expirationTime > currentTime) {
-    return config.token;
-  }
-
-  const newToken = await fetchNewToken();
-  const expirationTime = currentTime + 55 * 60 * 1000; // 55 minutes from now
-  writeConfig({ token: newToken, expirationTime });
-  return newToken;
-}
-
-async function makeChatRequest(message: string): Promise<string> {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2023-05-15';
-  const modelName = 'gpt-4'; // Adjust if your deployment name differs
-
-  if (!endpoint) {
-    throw new Error('Missing required environment variables: AZURE_OPENAI_ENDPOINT');
-  }
-
-  const url = `https://${endpoint}/openai/deployments/${modelName}/chat/completions?api-version=${apiVersion}`;
-  const token = await getAuthToken();
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messages: [
-        { role: 'system', content: 'You are a helpful assistant.' },
-        { role: 'user', content: message }
-      ]
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
-async function makeSpeechRequest(text: string): Promise<void> {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2023-05-15';
-  const deploymentName = 'tts'; // Adjust to your TTS deployment name
-  const outputFile = 'output.mp3';
-
-  if (!endpoint) {
-    throw new Error('Missing required environment variables: AZURE_OPENAI_ENDPOINT');
-  }
-
-  const url = `https://${endpoint}/openai/deployments/${deploymentName}/audio/speech?api-version=${apiVersion}`;
-  const token = await getAuthToken();
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'tts-1',
-      voice: 'onyx',
-      input: text,
-      response_format: 'mp3'
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`TTS API request failed with status ${response.status}`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  fs.writeFileSync(outputFile, Buffer.from(arrayBuffer));
-  console.log(`Audio saved to ${outputFile}`);
-}
+import { makeChatRequest } from './chat';
+import { makeSpeechRequest } from './voice';
 
 program
   .description('A command-line interface for interacting with Azure OpenAI')
@@ -156,7 +12,7 @@ program
 program
   .command('chat <message>')
   .description('Chat with the Azure OpenAI bot')
-  .action(async (message) => {
+  .action(async (message: string) => {
     try {
       const reply = await makeChatRequest(message);
       console.log(reply);
@@ -167,10 +23,13 @@ program
 
 program
   .command('speech <text>')
-  .description('Convert text to speech using Azure OpenAI TTS (onyx voice, tts-1 model, mp3 format)')
-  .action(async (text) => {
+  .description('Convert text to speech using Microsoft Speech SDK')
+  .option('-o, --output <file>', 'Output file path', 'output.wav')
+  .option('-v, --voice <voice>', 'Voice name (overrides env variable)')
+  .option('-p, --play', 'Play the audio file after generating it', false)
+  .action(async (text: string, options: { output: string, voice?: string, play: boolean }) => {
     try {
-      await makeSpeechRequest(text);
+      await makeSpeechRequest(text, options.output, options.voice, options.play);
     } catch (error: any) {
       console.error(`Error: ${error.message}`);
     }
